@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "medisync-ai"
+version = "1.0.0"
+description = "MediSync AI — Unified Intelligent Patient History System"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "motor>=3.4.0",           # Async MongoDB driver
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.9",  # For multipart form uploads
+    "spacy>=3.7.0",
+    "openai-whisper>=20231117",
+    "openai>=1.30.0",          # Optional LLM backend
+    "groq>=0.9.0",             # Groq Llama3 backend
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+    "aiofiles>=23.2.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "httpx>=0.27.0",          # For FastAPI test client
+    "mongomock-motor>=0.0.21", # In-memory MongoDB for tests
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
