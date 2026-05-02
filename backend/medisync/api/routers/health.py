@@ -1,12 +1,7 @@
 from fastapi import APIRouter
-from typing import Dict, Any
 
-router = APIRouter(prefix="/api", tags=["health"])
+router = APIRouter(prefix="/api/v1/health", tags=["health"])
 
-@router.get("/health", response_model=Dict[str, Any])
+@router.get("")
 async def health_check():
-    return {
-        "status": "ok",
-        "version": "1.0.0",
-        "db_connected": True  # In a real implementation, this would check the actual DB connection
-    }
+    return {"status": "ok"}

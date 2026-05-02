@@ -1,6 +1,4 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from medisync.core.config import get_settings
 
@@ -108,23 +106,4 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Register routers
-    app.include_router(health.router)
-    app.include_router(patients.router)
-    app.include_router(appointments.router)
-    app.include_router(dashboard.router)
-    app.include_router(consultation.router)
-
-    # Error handlers
-    async def custom_exception_handler(request: Request, exc: MediSyncError):
-        return JSONResponse(
-            status_code=exc.http_status,
-            content=format_error(exc)
-        )
-
-    # Apply handler to all subclasses of MediSyncError
-    app.add_exception_handler(MediSyncError, custom_exception_handler)
-
-    return app
-
-app = create_app()
+app.include_router(health.router)
