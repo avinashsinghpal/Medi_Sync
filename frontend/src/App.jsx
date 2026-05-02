@@ -9,6 +9,9 @@ import PatientDashboard from './pages/PatientDashboard';
 import ConsultationPage from './pages/ConsultationPage';
 import AppointmentBookingPage from './pages/AppointmentBookingPage';
 import PatientHistoryPage from './pages/PatientHistoryPage';
+import AllPatientsPage from './pages/AllPatientsPage';
+import LabResultsPage from './pages/LabResultsPage';
+import PatientProfilePage from './pages/PatientProfilePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,18 +22,14 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected Route Wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, user } = useAuthStore();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  
+  if (!isAuthenticated) return <Navigate to="/login" />;
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/" />;
   }
-
+  
   return children;
 };
 
@@ -58,8 +57,9 @@ function App() {
                 <Routes>
                   <Route path="dashboard" element={<DoctorDashboard />} />
                   <Route path="consultation/:id" element={<ConsultationPage />} />
-                  <Route path="patient/:id" element={<PatientHistoryPage />} />
-                  {/* Add more doctor routes here */}
+                  <Route path="patients" element={<AllPatientsPage />} />
+                  <Route path="lab-results" element={<LabResultsPage />} />
+                  <Route path="patient/:id/history" element={<PatientHistoryPage />} />
                 </Routes>
               </ProtectedRoute>
             } 
@@ -72,7 +72,7 @@ function App() {
                 <Routes>
                   <Route path="dashboard" element={<PatientDashboard />} />
                   <Route path="book" element={<AppointmentBookingPage />} />
-                  {/* Add more patient routes here */}
+                  <Route path="profile" element={<PatientProfilePage />} />
                 </Routes>
               </ProtectedRoute>
             } 

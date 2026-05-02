@@ -14,6 +14,22 @@ from medisync.patient.patient_management import PatientManager, CreatePatientReq
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
+@router.get("", response_model=PatientListResponse)
+async def list_patients(
+    limit: int = 50,
+    offset: int = 0,
+    manager: PatientManager = Depends(get_patient_manager),
+    user: TokenData = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN, UserRole.NURSE))
+):
+    profiles = await manager.list_patients(limit, offset)
+    results = []
+    for profile in profiles:
+        sanitized = sanitize_patient_data(profile.__dict__, user.role)
+        sanitized["age"] = profile.age
+        sanitized["status"] = profile.status.value
+        results.append(sanitized)
+    return {"patients": results, "total": len(results)}
+
 @router.post("", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
 async def create_patient(
     request: ApiCreatePatientRequest,
@@ -65,13 +81,36 @@ async def get_patient(
 ):
     # PATIENT (own only), DOCTOR, ADMIN, NURSE
     if user.role == UserRole.PATIENT:
-        # Check if they are requesting their own ID. 
-        # For this we might need to know mapping of user_id to patient_id, 
-        # or assume patient_id == user_id. Let's assume patient_id == user.user_id.
         if patient_id != user.user_id:
             raise HTTPException(status_code=403, detail="Can only access own data")
 
     profile = await manager.get_patient(patient_id)
+    sanitized = sanitize_patient_data(profile.__dict__, user.role)
+    sanitized["age"] = profile.age
+    sanitized["status"] = profile.status.value
+    return sanitized
+
+@router.patch("/{patient_id}", response_model=PatientResponse)
+async def update_patient(
+    patient_id: str,
+    request: ApiCreatePatientRequest, # Reusing for simplicity or create a partial schema
+    manager: PatientManager = Depends(get_patient_manager),
+    user: TokenData = Depends(get_current_user)
+):
+    if user.role == UserRole.PATIENT and patient_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Can only update own data")
+    
+    from medisync.patient.patient_management import UpdatePatientRequest
+    updates = UpdatePatientRequest(
+        full_name=request.full_name,
+        date_of_birth=request.date_of_birth.isoformat(),
+        gender=request.gender,
+        contact_email=request.contact_email,
+        contact_phone=request.contact_phone,
+        blood_group=request.blood_group,
+        address=request.address
+    )
+    profile = await manager.update_patient(patient_id, updates)
     sanitized = sanitize_patient_data(profile.__dict__, user.role)
     sanitized["age"] = profile.age
     sanitized["status"] = profile.status.value

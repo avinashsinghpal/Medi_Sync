@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import api from '../utils/api';
 
 export const usePatientSummary = (patientId) => {
@@ -30,5 +30,35 @@ export const usePatientHistory = (patientId) => {
       return response.data.records || [];
     },
     enabled: !!patientId,
+  });
+};
+
+export const useAllPatients = (limit = 50, offset = 0) => {
+  return useQuery({
+    queryKey: ['patients', limit, offset],
+    queryFn: async () => {
+      const response = await api.get('/patients', { params: { limit, offset } });
+      return response.data;
+    },
+  });
+};
+
+export const useSearchPatients = (query) => {
+  return useQuery({
+    queryKey: ['patientsSearch', query],
+    queryFn: async () => {
+      const response = await api.get('/patients/search', { params: { q: query } });
+      return response.data.patients || [];
+    },
+    enabled: query?.length >= 2,
+  });
+};
+
+export const useUpdatePatient = (patientId) => {
+  return useMutation({
+    mutationFn: async (data) => {
+      const response = await api.patch(`/patients/${patientId}`, data);
+      return response.data;
+    },
   });
 };

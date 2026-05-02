@@ -172,9 +172,12 @@ class PatientManager:
         return await self.repository.get_consultation_logs(patient_id, limit)
 
     async def search_patients(self, query: str, limit: int = 20) -> List[PatientProfile]:
-        if len(query) < 2:
-            raise InvalidPatientDataError("Search query MUST be at least 2 characters long")
+        if not query or len(query) < 2:
+            return await self.repository.list_patients(limit)
         return await self.repository.search_patients(query, limit)
+
+    async def list_patients(self, limit: int = 50, offset: int = 0) -> List[PatientProfile]:
+        return await self.repository.list_patients(limit, offset)
 
     async def get_patient_summary(self, patient_id: str) -> dict:
         profile = await self.get_patient(patient_id)

@@ -45,6 +45,11 @@ class PatientRepository:
         doc = self._to_dict(patient)
         await self.patients.replace_one({"patient_id": patient.patient_id}, doc)
 
+    async def list_patients(self, limit: int = 50, offset: int = 0) -> list[PatientProfile]:
+        cursor = self.patients.find({}).sort("full_name", 1).skip(offset).limit(limit)
+        docs = await cursor.to_list(length=limit)
+        return [self._from_dict(PatientProfile, doc) for doc in docs]
+
     async def search_patients(self, query: str, limit: int) -> list[PatientProfile]:
         """Search patients by name, email, or patient_id using case-insensitive regex.
 

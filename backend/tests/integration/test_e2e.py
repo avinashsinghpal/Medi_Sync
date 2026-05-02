@@ -43,41 +43,57 @@ _MODERATE_KEYWORDS = {"moderate", "back", "pain", "fever"}
 
 
 class StubPriorityEngine:
-    async def predict_priority(self, text: str) -> PriorityLevel:
+    async def predict_priority(self, text: str, context: dict = None) -> PriorityAssessment:
+        from medisync.ai_engine.priority_engine import PriorityAssessment
         lowered = text.lower()
         if any(kw in lowered for kw in _CRITICAL_KEYWORDS):
-            return PriorityLevel.CRITICAL
-        if any(kw in lowered for kw in _MODERATE_KEYWORDS):
-            return PriorityLevel.MODERATE
-        return PriorityLevel.ROUTINE
+            level = PriorityLevel.CRITICAL
+        elif any(kw in lowered for kw in _MODERATE_KEYWORDS):
+            level = PriorityLevel.MODERATE
+        else:
+            level = PriorityLevel.ROUTINE
+        
+        return PriorityAssessment(
+            priority_level=level,
+            risk_score=0.9 if level == PriorityLevel.CRITICAL else 0.2,
+            estimated_duration_minutes=30 if level == PriorityLevel.CRITICAL else 15,
+            risk_factors=["Severe symptoms"] if level == PriorityLevel.CRITICAL else [],
+            urgent_flags=["ER_REQUIRED"] if level == PriorityLevel.CRITICAL else [],
+            recommendation="Immediate attention" if level == PriorityLevel.CRITICAL else "Routine check",
+            confidence=0.95
+        )
 
     async def estimate_duration(self, text: str, history: list) -> int:
-        priority = await self.predict_priority(text)
-        return {
-            PriorityLevel.CRITICAL: 30,
-            PriorityLevel.MODERATE: 20,
-            PriorityLevel.ROUTINE: 15,
-        }[priority]
+        assessment = await self.predict_priority(text)
+        return assessment.estimated_duration_minutes
 
 
 class StubNLPEngine:
-    async def extract_entities(self, text: str) -> dict:
+    async def extract_from_text(self, text: str) -> ExtractionResult:
+        from medisync.ai_engine.nlp_engine import ExtractionResult
         symptoms = []
         if "chest pain" in text.lower():
             symptoms.append("chest pain")
+        
+        medications = []
+        dosages = {}
         if "aspirin" in text.lower():
-            medications = ["aspirin"]
-            dosages = {"aspirin": "75mg daily"} if "75mg" in text else {}
-        else:
-            medications = []
-            dosages = {}
+            medications.append("aspirin")
+            if "75mg" in text:
+                dosages["aspirin"] = "75mg daily"
 
-        return {
-            "symptoms": symptoms or [text[:40]],
-            "medications": medications,
-            "dosages": dosages,
-            "summary": f"Consultation: {text[:80]}",
-        }
+        return ExtractionResult(
+            symptoms=symptoms or [text[:40]],
+            medications=medications,
+            dosages=dosages,
+            diagnoses=[],
+            severity_indicators=[],
+            medical_terms=[],
+            negations=[],
+            vitals={},
+            summary=f"Consultation: {text[:80]}",
+            confidence=0.85
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +117,13 @@ async def wire_services():
     appointment_repo = AppointmentRepository(db)
     await appointment_repo.setup_indexes()
 
+    # Seed mock doctor
+    await db["doctors"].insert_one({
+        "doctor_id": DOCTOR_ID,
+        "full_name": "Dr. E2E",
+        "specialization": "Emergency Medicine"
+    })
+
     nlp = StubNLPEngine()
     priority = StubPriorityEngine()
     patient_manager = PatientManager(patient_repo, SETTINGS)
@@ -112,6 +135,7 @@ async def wire_services():
     app.state.doctor_dashboard = dashboard
     app.state.nlp_engine = nlp
     app.state.priority_engine = priority
+    app.state.db = db
 
     yield
 
@@ -120,6 +144,7 @@ async def wire_services():
     app.state.doctor_dashboard = None
     app.state.nlp_engine = None
     app.state.priority_engine = None
+    app.state.db = None
 
 
 @pytest_asyncio.fixture
