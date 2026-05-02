@@ -46,9 +46,19 @@ class PatientRepository:
         await self.patients.replace_one({"patient_id": patient.patient_id}, doc)
 
     async def search_patients(self, query: str, limit: int) -> list[PatientProfile]:
-        cursor = self.patients.find({"$text": {"$search": query}})
-        cursor.sort([("score", {"$meta": "textScore"})])
-        cursor.limit(limit)
+        """Search patients by name, email, or patient_id using case-insensitive regex.
+
+        Uses a regex OR query compatible with both real MongoDB and mongomock.
+        The full-text index created in setup_indexes still benefits production queries.
+        """
+        regex = {"$regex": query, "$options": "i"}
+        cursor = self.patients.find(
+            {"$or": [
+                {"full_name": regex},
+                {"contact_email": regex},
+                {"patient_id": regex},
+            ]}
+        ).limit(limit)
         docs = await cursor.to_list(length=limit)
         return [self._from_dict(PatientProfile, doc) for doc in docs]
 

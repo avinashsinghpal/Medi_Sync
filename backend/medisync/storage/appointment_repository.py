@@ -38,19 +38,26 @@ class AppointmentRepository:
         return [self._from_dict(Appointment, doc) for doc in docs]
 
     async def get_by_doctor_and_date(self, doctor_id: str, target_date: date) -> list[Appointment]:
+        """Return all non-cancelled appointments for a doctor on a given date.
+
+        Includes PENDING, CONFIRMED, and IN_SESSION so that newly-booked
+        appointments immediately appear in the doctor's queue before confirmation.
+        """
         start_of_day = datetime(target_date.year, target_date.month, target_date.day, tzinfo=timezone.utc)
         end_of_day = start_of_day + timedelta(days=1)
-        
+
+        active_statuses = [
+            AppointmentStatus.PENDING,
+            AppointmentStatus.CONFIRMED,
+            AppointmentStatus.IN_SESSION,
+        ]
         query = {
             "doctor_id": doctor_id,
             "scheduled_at": {"$gte": start_of_day, "$lt": end_of_day},
-            "status": {"$in": [AppointmentStatus.CONFIRMED, AppointmentStatus.IN_SESSION]}
+            "status": {"$in": [s.value for s in active_statuses]},
         }
-        
+
         cursor = self.appointments.find(query)
-        # Sort by priority and then time will be done in the service layer 
-        # or we could do it here if we use aggregation, but doing it in memory is fine for small queues.
-        # Let's do a basic sort by time here.
         cursor.sort("scheduled_at", 1)
         docs = await cursor.to_list(length=1000)
         return [self._from_dict(Appointment, doc) for doc in docs]
@@ -84,6 +91,9 @@ class AppointmentRepository:
         for doc in docs:
             app = self._from_dict(Appointment, doc)
             app_start = app.scheduled_at
+            # mongomock may return naive datetimes — normalise to UTC-aware
+            if app_start.tzinfo is None:
+                app_start = app_start.replace(tzinfo=timezone.utc)
             app_end = app_start + timedelta(minutes=app.estimated_duration_minutes)
             if app_start < end_time and app_end > start_time:
                 overlapping.append(app)
