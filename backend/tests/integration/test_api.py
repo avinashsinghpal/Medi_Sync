@@ -265,3 +265,17 @@ async def test_process_consultation_text(async_client: AsyncClient):
     assert "consultation_id" in data
     assert data["patient_id"] == patient_id
     assert "structured_output" in data
+
+
+@pytest.mark.asyncio
+async def test_get_doctor_queue(async_client: AsyncClient):
+    """GET /api/doctor/{id}/queue → check if queue endpoint returns data."""
+    doc_headers = auth_headers("DOC-1", UserRole.DOCTOR)
+    today = datetime.now(timezone.utc).date()
+
+    resp = await async_client.get(f"/api/doctor/DOC-1/queue?d={today.isoformat()}", headers=doc_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "queue" in data
+    assert isinstance(data["queue"], list)
+

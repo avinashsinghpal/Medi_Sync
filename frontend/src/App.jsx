@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
 
-// Pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDashboard from './pages/PatientDashboard';
@@ -46,7 +46,7 @@ function App() {
             element={
               isAuthenticated 
                 ? <Navigate to={user?.role === 'DOCTOR' || user?.role === 'ADMIN' ? "/doctor/dashboard" : "/patient/dashboard"} /> 
-                : <Navigate to="/login" />
+                : <LandingPage />
             } 
           />
           <Route path="/login" element={<LoginPage />} />
