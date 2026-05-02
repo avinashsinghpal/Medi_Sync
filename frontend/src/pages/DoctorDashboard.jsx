@@ -7,7 +7,8 @@ import { usePriorityQueue } from '../hooks/useDashboard';
 
 export default function DoctorDashboard() {
   const { user } = useAuthStore();
-  const today = new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const { data: queue = [] } = usePriorityQueue(user?.id, today);
   const nextPatientId = queue.length > 0 ? queue[0].patientId : null;
 
