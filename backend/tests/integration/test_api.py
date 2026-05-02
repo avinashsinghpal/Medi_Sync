@@ -19,21 +19,38 @@ from medisync.dashboard.dashboard import DoctorDashboard
 # ---------------------------------------------------------------------------
 
 class MockPriorityEngine:
-    async def predict_priority(self, symptoms_description: str):
+    async def predict_priority(self, symptoms_description: str, patient_history: dict = None):
         from medisync.core.types import PriorityLevel
-        return PriorityLevel.ROUTINE
+        from medisync.ai_engine.priority_engine import PriorityAssessment
+        return PriorityAssessment(
+            priority_level=PriorityLevel.ROUTINE,
+            risk_score=0.2,
+            estimated_duration_minutes=15,
+            risk_factors=[],
+            urgent_flags=[],
+            recommendation="Schedule routine appointment.",
+            confidence=0.85,
+        )
 
-    async def estimate_duration(self, symptoms_description: str, patient_history: list) -> int:
+    async def estimate_duration(self, symptoms_description: str, patient_history: dict = None) -> int:
         return 15
 
 
 class MockNLPEngine:
-    async def extract_entities(self, text: str) -> dict:
-        return {
-            "symptoms": ["headache", "fever"],
-            "medications": [],
-            "summary": f"Patient reports: {text[:60]}",
-        }
+    async def extract_from_text(self, text: str):
+        from medisync.ai_engine.nlp_engine import ExtractionResult
+        return ExtractionResult(
+            symptoms=["headache", "fever"],
+            medications=[],
+            dosages={},
+            diagnoses=[],
+            severity_indicators=[],
+            medical_terms=[],
+            negations=[],
+            vitals={},
+            summary=f"Patient reports: {text[:60]}",
+            confidence=0.85,
+        )
 
 
 # ---------------------------------------------------------------------------
