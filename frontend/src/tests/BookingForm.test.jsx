@@ -8,20 +8,41 @@ vi.mock('../hooks/useAppointments', () => ({
   useEstimatedWaitTime: vi.fn(() => ({ data: null, isLoading: false }))
 }));
 
+vi.mock('../hooks/useDoctors', () => ({
+  useDoctors: vi.fn(() => ({ data: [{ doctor_id: 'DOC-1', name: 'Dr. Test' }], isLoading: false }))
+}));
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
 describe('BookingForm', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   const renderWithRouter = (ui) => {
-    return render(<BrowserRouter>{ui}</BrowserRouter>);
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>{ui}</BrowserRouter>
+      </QueryClientProvider>
+    );
   };
 
   it('shows form validation error when advancing with empty symptoms', async () => {
     renderWithRouter(<BookingForm />);
 
     // Step 1: Reason
-    const reasonInput = screen.getByRole('textbox');
+    const doctorSelect = screen.getByLabelText('Doctor');
+    fireEvent.change(doctorSelect, { target: { value: 'DOC-1' } });
+
+    const reasonInput = screen.getByPlaceholderText('E.g., Follow up on blood test results');
     fireEvent.change(reasonInput, { target: { value: 'This is a valid reason that is long enough.' } });
     
     const nextBtn1 = screen.getByText('Next Step');

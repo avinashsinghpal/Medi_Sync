@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Navbar from '../components/shared/Navbar';
 import DashboardStats from '../components/doctor/DashboardStats';
 import PriorityQueue from '../components/doctor/PriorityQueue';
@@ -8,8 +9,10 @@ import { usePriorityQueue } from '../hooks/useDashboard';
 export default function DoctorDashboard() {
   const { user } = useAuthStore();
   const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const { data: queue = [] } = usePriorityQueue(user?.id, today);
+  const initialDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  
+  const { data: queue = [] } = usePriorityQueue(user?.id, selectedDate);
   const nextPatientId = queue.length > 0 ? queue[0].patientId : null;
 
   return (
@@ -17,17 +20,35 @@ export default function DoctorDashboard() {
       <Navbar />
       
       <main className="container" style={{ flex: 1, padding: '2rem 1.5rem' }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.875rem', marginBottom: '0.5rem' }}>Welcome, Dr. {user?.name?.split(' ')[0] || 'Doctor'}</h1>
-          <p style={{ color: '#64748b', margin: 0 }}>Here's your upcoming schedule.</p>
+        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: '1.875rem', marginBottom: '0.5rem' }}>Welcome, Dr. {user?.name?.split(' ')[0] || 'Doctor'}</h1>
+            <p style={{ color: '#64748b', margin: 0 }}>Here's your schedule for the selected date.</p>
+          </div>
+          <div>
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                padding: '0.75rem',
+                border: '1px solid #cbd5e1',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                backgroundColor: 'white',
+                color: '#0f172a',
+                cursor: 'pointer'
+              }}
+            />
+          </div>
         </div>
 
-        <DashboardStats doctorId={user?.id} date={today} />
+        <DashboardStats doctorId={user?.id} date={selectedDate} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
           {/* Main Queue Column */}
           <div style={{ minWidth: 0 }}>
-            <PriorityQueue doctorId={user?.id} date={today} />
+            <PriorityQueue doctorId={user?.id} date={selectedDate} />
           </div>
           
           {/* Sidebar / Quick Look */}

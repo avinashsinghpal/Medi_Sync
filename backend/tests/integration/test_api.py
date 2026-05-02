@@ -69,6 +69,13 @@ async def setup_app_state():
     appointment_repo = AppointmentRepository(db)
     await appointment_repo.setup_indexes()
 
+    # Seed mock doctor
+    await db["doctors"].insert_one({
+        "doctor_id": "DOC-1",
+        "full_name": "Dr. Test",
+        "specialization": "General Medicine"
+    })
+
     settings = override_settings(
         mongodb_url="mongodb://localhost",
         jwt_secret_key="test-secret-key",
@@ -81,6 +88,8 @@ async def setup_app_state():
     appointment_system = AppointmentSystem(
         appointment_repo, patient_manager, priority_engine, settings
     )
+    doctor_dashboard = DoctorDashboard(patient_manager, appointment_system, nlp_engine, priority_engine)
+    
     from medisync.api.dependencies import (
         get_patient_manager, get_appointment_system, get_doctor_dashboard,
         get_nlp_engine, get_priority_engine
@@ -93,6 +102,7 @@ async def setup_app_state():
     app.dependency_overrides[get_priority_engine] = lambda: priority_engine
 
     # Set them on app.state too just in case anything accesses it directly
+    app.state.db = db
     app.state.patient_manager = patient_manager
     app.state.appointment_system = appointment_system
     app.state.doctor_dashboard = doctor_dashboard
@@ -211,6 +221,7 @@ async def test_book_appointment(async_client: AsyncClient):
             "patient_id": patient_id,
             "scheduled_at": future_time,
             "consultation_type": "in_person",
+            "doctor_id": "DOC-1",
             "symptoms_description": "Severe headache and high fever for three days.",
         },
     )
@@ -234,6 +245,7 @@ async def test_process_consultation_text(async_client: AsyncClient):
             "patient_id": patient_id,
             "scheduled_at": future_time,
             "consultation_type": "in_person",
+            "doctor_id": "DOC-1",
             "symptoms_description": "Patient reports chest pain and shortness of breath.",
         },
     )

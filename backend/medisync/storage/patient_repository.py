@@ -87,17 +87,21 @@ class PatientRepository:
 
     def _to_dict(self, obj: typing.Any) -> dict:
         import dataclasses
+        from enum import Enum
         if dataclasses.is_dataclass(obj):
             doc = dataclasses.asdict(obj)
             # Motor handles datetimes. For 'date' objects in date_of_birth we convert to datetime.
             for k, v in doc.items():
-                if isinstance(v, date) and not isinstance(v, datetime):
+                if isinstance(v, Enum):
+                    doc[k] = v.value
+                elif isinstance(v, date) and not isinstance(v, datetime):
                     doc[k] = datetime(v.year, v.month, v.day)
             return doc
         return obj
 
     def _from_dict(self, cls: typing.Type, doc: dict) -> typing.Any:
         import dataclasses
+        from medisync.core.types import PatientStatus, PriorityLevel
         if not doc:
             return None
         doc.pop("_id", None)
@@ -107,5 +111,17 @@ class PatientRepository:
         # Convert datetime back to date for date_of_birth
         if 'date_of_birth' in filtered_doc and isinstance(filtered_doc['date_of_birth'], datetime):
             filtered_doc['date_of_birth'] = filtered_doc['date_of_birth'].date()
+
+        # Convert raw string values back to their Enum types
+        _enum_map = {
+            "status": PatientStatus,
+            "priority_level": PriorityLevel,
+        }
+        for field_name, enum_cls in _enum_map.items():
+            if field_name in filtered_doc and isinstance(filtered_doc[field_name], str):
+                try:
+                    filtered_doc[field_name] = enum_cls(filtered_doc[field_name])
+                except ValueError:
+                    pass
             
         return cls(**filtered_doc)

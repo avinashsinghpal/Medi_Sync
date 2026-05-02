@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/shared/Navbar';
 import PriorityBadge from '../components/shared/PriorityBadge';
 import { useAuthStore } from '../store/authStore';
-import { Calendar, Plus, Clock, FileText } from 'lucide-react';
+import { Calendar, Plus, Clock, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePatientAppointments } from '../hooks/useAppointments';
 
 export default function PatientDashboard() {
@@ -80,27 +81,77 @@ export default function PatientDashboard() {
                   No past appointments.
                 </div>
               ) : pastAppointments.map(app => (
-                <div key={app.appointment_id} className="glass-panel" style={{ padding: '1.5rem', opacity: 0.8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div>
-                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>{new Date(app.scheduled_at).toLocaleString()}</h3>
-                      <p style={{ margin: 0, color: '#64748b' }}>Doctor ID: {app.doctor_id || 'TBD'}</p>
-                    </div>
-                  </div>
-                  <button style={{ 
-                    padding: '0.5rem 1rem', backgroundColor: '#f1f5f9', border: 'none', 
-                    borderRadius: '0.375rem', fontSize: '0.875rem', fontWeight: '500', 
-                    color: '#0f172a', cursor: 'pointer', width: '100%' 
-                  }}>
-                    View Summary
-                  </button>
-                </div>
+                <AppointmentHistoryCard key={app.appointment_id} app={app} />
               ))}
             </div>
           </div>
 
         </div>
       </main>
+    </div>
+  );
+}
+
+function AppointmentHistoryCard({ app }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="glass-panel" style={{ padding: '1.5rem', opacity: 0.9, transition: 'all 0.3s ease' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div>
+          <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>{new Date(app.scheduled_at).toLocaleString()}</h3>
+          <p style={{ margin: 0, color: '#64748b' }}>Doctor ID: {app.doctor_id || 'TBD'}</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+           <span style={{ backgroundColor: '#f1f5f9', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>
+              {app.status}
+            </span>
+        </div>
+      </div>
+
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{ 
+          padding: '0.625rem 1rem', 
+          backgroundColor: isExpanded ? '#f1f5f9' : '#ffffff', 
+          border: '1px solid #e2e8f0', 
+          borderRadius: '0.5rem', 
+          fontSize: '0.875rem', 
+          fontWeight: '600', 
+          color: '#0f172a', 
+          cursor: 'pointer', 
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem',
+          transition: 'all 0.2s'
+        }}
+        onMouseOver={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+        onMouseOut={e => !isExpanded && (e.currentTarget.style.backgroundColor = '#ffffff')}
+      >
+        {isExpanded ? (
+          <>Hide Summary <ChevronUp size={16} /></>
+        ) : (
+          <>View Summary <ChevronDown size={16} /></>
+        )}
+      </button>
+
+      {isExpanded && (
+        <div style={{ 
+          marginTop: '1rem', 
+          padding: '1rem', 
+          backgroundColor: '#f8fafc', 
+          borderRadius: '0.5rem', 
+          border: '1px solid #e2e8f0',
+          fontSize: '0.875rem',
+          color: '#334155',
+          lineHeight: '1.6',
+          whiteSpace: 'pre-wrap'
+        }}>
+          {app.notes || "No summary notes provided for this consultation."}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from medisync.api.schemas.appointments import (
     BookAppointmentRequest as ApiBookAppointmentRequest,
     AppointmentResponse,
@@ -12,6 +13,13 @@ from medisync.appointment.appointment_system import AppointmentSystem, BookAppoi
 from medisync.core.types import ConsultationType, Appointment
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
+
+class EstimateRequest(BaseModel):
+    symptoms: List[str]
+
+class EstimateResponse(BaseModel):
+    priority: str
+    estimatedWaitMinutes: int
 
 def _make_response(app: Appointment) -> AppointmentResponse:
     def _v(field):
@@ -55,6 +63,28 @@ async def book_appointment(
     )
     app = await system.book_appointment(req_data)
     return _make_response(app)
+
+@router.post("/estimate", response_model=EstimateResponse)
+async def estimate_priority(
+    request: EstimateRequest,
+    system: AppointmentSystem = Depends(get_appointment_system),
+    user: TokenData = Depends(get_current_user)
+):
+    text = " ".join(request.symptoms)
+    try:
+        assessment = await system.priority_engine.predict_priority(text, {})
+        priority = assessment.priority_level.value
+        duration = assessment.estimated_duration_minutes
+    except Exception:
+        # Fallback
+        is_critical = any(k in text.lower() for k in ["chest pain", "breathing", "bleeding"])
+        priority = "critical" if is_critical else "routine"
+        duration = 5 if is_critical else 45
+
+    return EstimateResponse(
+        priority=priority,
+        estimatedWaitMinutes=duration
+    )
 
 @router.get("/patient/{patient_id}", response_model=List[AppointmentResponse])
 async def get_patient_appointments(
@@ -106,7 +136,7 @@ async def complete_consultation(
     system: AppointmentSystem = Depends(get_appointment_system),
     user: TokenData = Depends(require_role(UserRole.DOCTOR))
 ):
-    app = await system.complete_consultation(appointment_id, request.consultation_id)
+    app = await system.complete_consultation(appointment_id, request.consultation_id, request.summary)
     return _make_response(app)
 
 @router.patch("/{appointment_id}/cancel", response_model=AppointmentResponse)

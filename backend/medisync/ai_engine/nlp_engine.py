@@ -95,44 +95,100 @@ class NLPEngine:
         # In a real scenario, spaCy / LLM calls happen here
         text_lower = text.lower()
         
-        # 1. Pre-process (basic expansion for demo)
-        # Note: robust expansion would require word boundary matching
-        
         result = ExtractionResult(confidence=0.7)
         
-        # Simple extraction logic for tests
-        if "severe" in text_lower:
-            result.severity_indicators.append("severe")
-            
-        if "chest pain" in text_lower:
-            result.symptoms.append("chest pain")
-            
-        if "back pain" in text_lower:
-            result.symptoms.append("back pain")
-            
-        if "fever" in text_lower:
-            result.symptoms.append("fever")
-            
-        if "cough" in text_lower:
-            if "no cough" in text_lower:
-                result.negations.append("cough")
-            else:
-                result.symptoms.append("cough")
-                
-        if "no fever" in text_lower and "fever" not in result.negations:
-            if "fever" in result.symptoms:
-                result.symptoms.remove("fever")
-            result.negations.append("fever")
-
-        if "aspirin" in text_lower:
-            result.medications.append("aspirin")
-            if "75mg daily" in text_lower:
-                result.dosages["aspirin"] = "75mg daily"
-
-        # Vitals extraction: "BP 140/90"
-        bp_match = re.search(r"bp\s*(\d{2,3}/\d{2,3})", text_lower)
-        if bp_match:
-            result.vitals["BP"] = bp_match.group(1)
+        # ── Symptom extraction (comprehensive keyword list) ──
+        symptom_keywords = [
+            "chest pain", "back pain", "headache", "head ache", "fever", "cough",
+            "nausea", "vomiting", "dizziness", "fatigue", "shortness of breath",
+            "abdominal pain", "stomach pain", "sore throat", "runny nose",
+            "body ache", "body pain", "joint pain", "muscle pain", "weakness",
+            "swelling", "rash", "itching", "insomnia", "anxiety", "depression",
+            "weight loss", "weight gain", "blurred vision", "ear pain",
+            "palpitations", "constipation", "diarrhea", "bloating",
+            "numbness", "tingling", "loss of appetite", "chills",
+            "throbbing", "migraine", "cramps", "sprain", "fracture",
+        ]
+        
+        # Check negations first
+        negation_patterns = [f"no {s}" for s in symptom_keywords] + [f"denies {s}" for s in symptom_keywords]
+        negated_symptoms = set()
+        for neg in negation_patterns:
+            if neg in text_lower:
+                symptom = neg.replace("no ", "").replace("denies ", "")
+                negated_symptoms.add(symptom)
+                result.negations.append(symptom)
+        
+        for symptom in symptom_keywords:
+            if symptom in text_lower and symptom not in negated_symptoms:
+                result.symptoms.append(symptom)
+        
+        # ── Severity indicators ──
+        for level, keywords in self.severity_keywords.items():
+            for kw in keywords:
+                if kw in text_lower:
+                    result.severity_indicators.append(kw)
+        
+        # ── Medication extraction ──
+        medication_keywords = [
+            "aspirin", "ibuprofen", "paracetamol", "acetaminophen", "amoxicillin",
+            "metformin", "lisinopril", "amlodipine", "omeprazole", "pantoprazole",
+            "atorvastatin", "losartan", "hydrochlorothiazide", "prednisone",
+            "azithromycin", "ciprofloxacin", "doxycycline", "metoprolol",
+            "levothyroxine", "albuterol", "insulin", "warfarin", "clopidogrel",
+            "gabapentin", "tramadol", "diclofenac", "naproxen", "cetirizine",
+            "montelukast", "fluticasone", "salbutamol",
+        ]
+        
+        for med in medication_keywords:
+            if med in text_lower:
+                result.medications.append(med)
+                # Try to find dosage pattern near the medication name
+                dosage_pattern = re.search(
+                    rf'{med}\s+(\d+\s*(?:mg|ml|mcg|g|units?)(?:\s*(?:daily|twice|once|bd|tds|qid|od|hs|prn))?)',
+                    text_lower
+                )
+                if dosage_pattern:
+                    result.dosages[med] = dosage_pattern.group(1).strip()
+        
+        # ── Vitals extraction ──
+        # Blood pressure: various formats
+        bp_patterns = [
+            re.search(r'(?:bp|blood pressure)\s*(?:is|of|:)?\s*(\d{2,3})\s*(?:/|over)\s*(\d{2,3})', text_lower),
+            re.search(r'(\d{2,3})\s*(?:/|over)\s*(\d{2,3})\s*(?:mm\s*hg|mmhg)?', text_lower),
+        ]
+        for bp_match in bp_patterns:
+            if bp_match:
+                systolic, diastolic = int(bp_match.group(1)), int(bp_match.group(2))
+                if 60 <= systolic <= 250 and 30 <= diastolic <= 150:
+                    result.vitals["blood_pressure"] = f"{systolic}/{diastolic}"
+                    break
+        
+        # Heart rate
+        hr_match = re.search(r'(?:heart rate|hr|pulse)\s*(?:is|of|:)?\s*(\d{2,3})\s*(?:bpm)?', text_lower)
+        if hr_match:
+            result.vitals["heart_rate"] = f"{hr_match.group(1)} bpm"
+        
+        # Temperature
+        temp_match = re.search(r'(?:temp|temperature)\s*(?:is|of|:)?\s*(\d{2,3}(?:\.\d)?)\s*(?:°?[fc]|degrees?)?', text_lower)
+        if temp_match:
+            result.vitals["temperature"] = f"{temp_match.group(1)}°F"
+        
+        # Pain scale
+        pain_match = re.search(r'(\d{1,2})\s*(?:out of|/)\s*10\s*(?:on the pain scale|pain)?', text_lower)
+        if pain_match:
+            result.vitals["pain_scale"] = f"{pain_match.group(1)}/10"
+        
+        # ── Diagnoses (common patterns) ──
+        diagnosis_keywords = [
+            "common flu", "influenza", "hypertension", "diabetes", "migraine",
+            "gastritis", "bronchitis", "pneumonia", "asthma", "arthritis",
+            "sinusitis", "pharyngitis", "conjunctivitis", "urinary tract infection",
+            "anxiety disorder", "tension headache", "vertigo",
+        ]
+        for diag in diagnosis_keywords:
+            if diag in text_lower:
+                result.diagnoses.append(diag)
 
         result.summary = await self.generate_consultation_summary(result, {})
         self._cache_set(cache_key, result)

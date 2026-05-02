@@ -8,6 +8,7 @@ import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDashboard from './pages/PatientDashboard';
 import ConsultationPage from './pages/ConsultationPage';
 import AppointmentBookingPage from './pages/AppointmentBookingPage';
+import PatientHistoryPage from './pages/PatientHistoryPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,7 @@ function App() {
                 <Routes>
                   <Route path="dashboard" element={<DoctorDashboard />} />
                   <Route path="consultation/:id" element={<ConsultationPage />} />
+                  <Route path="patient/:id" element={<PatientHistoryPage />} />
                   {/* Add more doctor routes here */}
                 </Routes>
               </ProtectedRoute>

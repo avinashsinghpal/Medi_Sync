@@ -81,7 +81,7 @@ class AppointmentRepository:
         query = {
             "doctor_id": doctor_id,
             "scheduled_at": {"$gte": search_start, "$lt": search_end},
-            "status": {"$in": [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.IN_SESSION]}
+            "status": {"$in": [AppointmentStatus.PENDING.value, AppointmentStatus.CONFIRMED.value, AppointmentStatus.IN_SESSION.value]}
         }
         
         cursor = self.appointments.find(query)
@@ -102,16 +102,36 @@ class AppointmentRepository:
 
     def _to_dict(self, obj: typing.Any) -> dict:
         import dataclasses
+        from enum import Enum
         if dataclasses.is_dataclass(obj):
             doc = dataclasses.asdict(obj)
+            # Ensure all Enum values are stored as plain strings
+            for k, v in doc.items():
+                if isinstance(v, Enum):
+                    doc[k] = v.value
             return doc
         return obj
 
     def _from_dict(self, cls: typing.Type, doc: dict) -> typing.Any:
         import dataclasses
+        from medisync.core.types import ConsultationType, AppointmentStatus as AStatus, PriorityLevel
         if not doc:
             return None
         doc.pop("_id", None)
         fields = {f.name for f in dataclasses.fields(cls)}
         filtered_doc = {k: v for k, v in doc.items() if k in fields}
+
+        # Convert raw string values back to their Enum types
+        _enum_map = {
+            "consultation_type": ConsultationType,
+            "status": AStatus,
+            "priority_level": PriorityLevel,
+        }
+        for field_name, enum_cls in _enum_map.items():
+            if field_name in filtered_doc and isinstance(filtered_doc[field_name], str):
+                try:
+                    filtered_doc[field_name] = enum_cls(filtered_doc[field_name])
+                except ValueError:
+                    pass  # leave as-is if value doesn't match enum
+
         return cls(**filtered_doc)

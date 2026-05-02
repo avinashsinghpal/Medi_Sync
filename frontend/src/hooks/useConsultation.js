@@ -17,10 +17,25 @@ export const useProcessConsultation = () => {
         },
       });
       
+      const output = response.data.structured_output || {};
+      // Separate array fields (entities) from scalar fields (metadata)
+      const entities = {};
+      const metadata = {};
+      for (const [key, value] of Object.entries(output)) {
+        if (Array.isArray(value) && value.length > 0) {
+          entities[key] = value;
+        } else if (!Array.isArray(value) && value) {
+          metadata[key] = value;
+        }
+      }
+      
       return {
         summary: response.data.consultation_summary,
-        entities: response.data.structured_output,
+        entities,
+        metadata,
+        priorityLevel: response.data.priority_level,
         consultationId: response.data.consultation_id,
+        followUp: response.data.recommended_follow_up,
       };
     },
   });

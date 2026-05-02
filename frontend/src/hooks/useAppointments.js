@@ -1,11 +1,16 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../utils/api';
 
 export const useBookAppointment = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (appointmentData) => {
       const response = await api.post('/appointments', appointmentData);
       return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     }
   });
 };

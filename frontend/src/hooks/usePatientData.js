@@ -21,3 +21,14 @@ export const usePatientSummary = (patientId) => {
     enabled: !!patientId,
   });
 };
+
+export const usePatientHistory = (patientId) => {
+  return useQuery({
+    queryKey: ['patientHistory', patientId],
+    queryFn: async () => {
+      const response = await api.get(`/patients/${patientId}/history`);
+      return response.data.records || [];
+    },
+    enabled: !!patientId,
+  });
+};

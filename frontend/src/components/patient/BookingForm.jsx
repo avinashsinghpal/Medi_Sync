@@ -105,8 +105,9 @@ export default function BookingForm() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: '#0f172a' }}>Reason for Visit</h2>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Doctor</label>
+                <label htmlFor="doctor_id" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Doctor</label>
                 <select
+                  id="doctor_id"
                   {...register('doctor_id')}
                   style={{ width: '100%', padding: '0.75rem', border: `1px solid ${errors.doctor_id ? '#ef4444' : '#cbd5e1'}`, borderRadius: '0.5rem', backgroundColor: 'white', fontSize: '0.9375rem' }}
                 >

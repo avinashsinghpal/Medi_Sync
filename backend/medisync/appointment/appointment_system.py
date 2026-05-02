@@ -6,7 +6,7 @@ from medisync.core.types import Appointment, AppointmentStatus, ConsultationType
 from medisync.core.errors import InvalidPatientDataError, AppointmentConflictError, InvalidAppointmentStateError, AppointmentNotFoundError
 from medisync.core.config import Settings
 from medisync.storage.appointment_repository import AppointmentRepository
-from medisync.patient.patient_management import PatientManager
+from medisync.patient.patient_management import PatientManager, CreateMedicalRecordRequest
 
 # Mocking PriorityEngine for type hinting if it's not implemented yet
 try:
@@ -132,19 +132,42 @@ class AppointmentSystem:
         await self.repository.update(app)
         return app
 
-    async def complete_consultation(self, appointment_id: str, consultation_id: str) -> Appointment:
+    async def complete_consultation(self, appointment_id: str, consultation_id: str, summary: Optional[str] = None) -> Appointment:
         app = await self.get_appointment(appointment_id)
         if app.status != AppointmentStatus.IN_SESSION:
             raise InvalidAppointmentStateError(f"Cannot complete consultation for appointment in state {app.status}")
             
         app.status = AppointmentStatus.COMPLETED
-        # link consultation_id could be added to notes or we need to update ConsultationLog directly.
-        if app.notes:
-            app.notes += f"\nConsultation ID: {consultation_id}"
-        else:
-            app.notes = f"Consultation ID: {consultation_id}"
+        
+        # 1. Update appointment notes
+        notes_to_add = f"Consultation ID: {consultation_id}"
+        if summary:
+            notes_to_add += f"\n\nDoctor Summary:\n{summary}"
             
+        if app.notes:
+            app.notes += f"\n\n{notes_to_add}"
+        else:
+            app.notes = notes_to_add
+
         await self.repository.update(app)
+
+        # 2. Automatically create a MedicalRecord for the patient
+        # This ensures the consultation shows up in 'Comprehensive Medical History'
+        try:
+            record_req = CreateMedicalRecordRequest(
+                record_type="note",
+                title=f"Consultation Summary - {app.scheduled_at.strftime('%Y-%m-%d')}",
+                content=summary or "Consultation completed successfully.",
+                consultation_id=consultation_id,
+                doctor_id=app.doctor_id,
+                tags=["consultation", app.consultation_type.value if hasattr(app.consultation_type, "value") else str(app.consultation_type)]
+            )
+            await self.patient_manager.add_medical_record(app.patient_id, record_req)
+        except Exception as e:
+            # We don't want to fail the whole completion if medical record creation fails,
+            # but we should log it.
+            print(f"Warning: Failed to create medical record for appointment {appointment_id}: {str(e)}")
+
         return app
 
     async def cancel_appointment(self, appointment_id: str, reason: Optional[str] = None) -> Appointment:

@@ -82,9 +82,41 @@ export default function PriorityQueue({ doctorId, date }) {
                     <td style={{ padding: '1rem', color: '#475569' }}>{item.scheduledTime}</td>
                     <td style={{ padding: '1rem', color: '#475569' }}>{item.estimatedDuration}</td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
+                      {String(item.status).toLowerCase() === 'pending' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { default: api } = await import('../../utils/api');
+                              await api.patch(`/appointments/${item.id}/confirm`);
+                              // Refresh the queue
+                              window.location.reload();
+                            } catch (err) {
+                              console.error('Confirm failed', err);
+                            }
+                          }}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                            padding: '0.375rem 0.75rem', backgroundColor: '#f59e0b', color: 'white',
+                            borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer',
+                            border: 'none', transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                        >
+                          Confirm
+                        </button>
+                      )}
                       {String(item.status).toLowerCase() === 'confirmed' && (
                         <button
-                          onClick={() => navigate(`/doctor/consultation/${item.id}`)}
+                          onClick={async () => {
+                            try {
+                              const { default: api } = await import('../../utils/api');
+                              await api.patch(`/appointments/${item.id}/start`);
+                              navigate(`/doctor/consultation/${item.id}`);
+                            } catch (err) {
+                              console.error('Failed to start consultation', err);
+                            }
+                          }}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
                             padding: '0.375rem 0.75rem', backgroundColor: '#0ea5e9', color: 'white',
@@ -95,6 +127,19 @@ export default function PriorityQueue({ doctorId, date }) {
                           onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0ea5e9'}
                         >
                           <Play size={12} fill="currentColor" /> Start
+                        </button>
+                      )}
+                      {String(item.status).toLowerCase() === 'in_session' && (
+                        <button
+                          onClick={() => navigate(`/doctor/consultation/${item.id}`)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                            padding: '0.375rem 0.75rem', backgroundColor: '#10b981', color: 'white',
+                            borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer',
+                            border: 'none', transition: 'background-color 0.2s'
+                          }}
+                        >
+                          Resume
                         </button>
                       )}
                     </td>

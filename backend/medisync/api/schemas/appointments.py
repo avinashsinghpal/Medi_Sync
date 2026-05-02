@@ -25,6 +25,7 @@ class AppointmentResponse(BaseModel):
 
 class CompleteConsultationRequest(BaseModel):
     consultation_id: str
+    summary: Optional[str] = None
 
 class CancelAppointmentRequest(BaseModel):
     reason: Optional[str] = None

@@ -87,24 +87,28 @@ export default function ConsultationPanel({ appointmentId, patientId }) {
         {!extractedData && !consultationSummary ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', textAlign: 'center' }}>
             <FileText size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-            <p>Generate a summary to view extracted entities and structured notes.</p>
+            <p>Record a consultation, then click "Generate NLP Summary" to extract entities.</p>
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
-            {extractedData && (
+            {extractedData && Object.keys(extractedData).length > 0 && (
               <div>
                 <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.75rem' }}>Extracted Entities</h3>
                 
                 {Object.entries(extractedData).map(([category, items]) => (
                   <div key={category} style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: '600', marginBottom: '0.25rem', textTransform: 'capitalize' }}>{category}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: '600', marginBottom: '0.25rem', textTransform: 'capitalize' }}>{category.replace(/_/g, ' ')}</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                      {items.map((item, i) => (
+                      {Array.isArray(items) ? items.map((item, i) => (
                         <span key={i} style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '500' }}>
-                          {item}
+                          {typeof item === 'string' ? item : JSON.stringify(item)}
                         </span>
-                      ))}
+                      )) : (
+                        <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '500' }}>
+                          {String(items)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
