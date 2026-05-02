@@ -19,21 +19,38 @@ from medisync.dashboard.dashboard import DoctorDashboard
 # ---------------------------------------------------------------------------
 
 class MockPriorityEngine:
-    async def predict_priority(self, symptoms_description: str):
+    async def predict_priority(self, symptoms_description: str, patient_history: dict = None):
         from medisync.core.types import PriorityLevel
-        return PriorityLevel.ROUTINE
+        from medisync.ai_engine.priority_engine import PriorityAssessment
+        return PriorityAssessment(
+            priority_level=PriorityLevel.ROUTINE,
+            risk_score=0.2,
+            estimated_duration_minutes=15,
+            risk_factors=[],
+            urgent_flags=[],
+            recommendation="Schedule routine appointment.",
+            confidence=0.85,
+        )
 
-    async def estimate_duration(self, symptoms_description: str, patient_history: list) -> int:
+    async def estimate_duration(self, symptoms_description: str, patient_history: dict = None) -> int:
         return 15
 
 
 class MockNLPEngine:
-    async def extract_entities(self, text: str) -> dict:
-        return {
-            "symptoms": ["headache", "fever"],
-            "medications": [],
-            "summary": f"Patient reports: {text[:60]}",
-        }
+    async def extract_from_text(self, text: str):
+        from medisync.ai_engine.nlp_engine import ExtractionResult
+        return ExtractionResult(
+            symptoms=["headache", "fever"],
+            medications=[],
+            dosages={},
+            diagnoses=[],
+            severity_indicators=[],
+            medical_terms=[],
+            negations=[],
+            vitals={},
+            summary=f"Patient reports: {text[:60]}",
+            confidence=0.85,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -64,10 +81,18 @@ async def setup_app_state():
     appointment_system = AppointmentSystem(
         appointment_repo, patient_manager, priority_engine, settings
     )
-    doctor_dashboard = DoctorDashboard(
-        patient_manager, appointment_system, nlp_engine, priority_engine
+    from medisync.api.dependencies import (
+        get_patient_manager, get_appointment_system, get_doctor_dashboard,
+        get_nlp_engine, get_priority_engine
     )
+    
+    app.dependency_overrides[get_patient_manager] = lambda: patient_manager
+    app.dependency_overrides[get_appointment_system] = lambda: appointment_system
+    app.dependency_overrides[get_doctor_dashboard] = lambda: doctor_dashboard
+    app.dependency_overrides[get_nlp_engine] = lambda: nlp_engine
+    app.dependency_overrides[get_priority_engine] = lambda: priority_engine
 
+    # Set them on app.state too just in case anything accesses it directly
     app.state.patient_manager = patient_manager
     app.state.appointment_system = appointment_system
     app.state.doctor_dashboard = doctor_dashboard
@@ -76,15 +101,11 @@ async def setup_app_state():
 
     yield
 
-    app.state.patient_manager = None
-    app.state.appointment_system = None
-    app.state.doctor_dashboard = None
-    app.state.nlp_engine = None
-    app.state.priority_engine = None
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
-async def async_client():
+async def async_client(setup_app_state):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

@@ -51,7 +51,12 @@ class AppointmentSystem:
             raise InvalidPatientDataError("symptoms_description MUST NOT be empty (minimum 10 characters)")
 
         # 4. Predict priority and duration
-        priority = await self.priority_engine.predict_priority(request.symptoms_description)
+        # predict_priority returns either a PriorityAssessment or a PriorityLevel (duck-typed)
+        assessment = await self.priority_engine.predict_priority(request.symptoms_description)
+        if hasattr(assessment, "priority_level"):
+            priority = assessment.priority_level
+        else:
+            priority = assessment  # already a PriorityLevel
         # Getting history for duration estimate
         history = await self.patient_manager.get_patient_history(request.patient_id)
         duration = await self.priority_engine.estimate_duration(request.symptoms_description, history)
