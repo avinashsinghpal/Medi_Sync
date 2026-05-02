@@ -16,32 +16,87 @@ from medisync.core.errors import (
     NLPExtractionError,
     SpeechProcessingError,
     AIServiceUnavailableError,
-    format_error
+    format_error,
 )
+from medisync.dashboard.dashboard import DoctorDashboard
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize services
-    # Connect to MongoDB
-    # Initialize Service objects and store in app.state
+    """
+    Application lifespan: startup wires all services into app.state.
+
+    Full wiring (production) requires live MongoDB + AI engines.
+    In tests, app.state is overridden by fixtures before each test.
+    """
+    # Default all state slots to None — overridden in production startup
+    # and in integration test fixtures.
     app.state.patient_manager = None
     app.state.appointment_system = None
     app.state.doctor_dashboard = None
     app.state.nlp_engine = None
     app.state.priority_engine = None
     app.state.speech_processor = None
+
+    # Production startup would look like:
+    #   settings = get_settings()
+    #   client = AsyncIOMotorClient(settings.mongodb_url)
+    #   db = client[settings.mongodb_db_name]
+    #   patient_repo = PatientRepository(db)
+    #   appt_repo    = AppointmentRepository(db)
+    #   ...
+    #   app.state.patient_manager    = PatientManager(patient_repo, settings)
+    #   app.state.appointment_system = AppointmentSystem(appt_repo, patient_manager, priority_engine, settings)
+    #   app.state.doctor_dashboard   = DoctorDashboard(patient_manager, appointment_system, nlp_engine, priority_engine)
+
     yield
-    # Shutdown: Clean up connections
+
+    # Shutdown: close DB connections, unload AI models
     pass
+
+_TAGS_METADATA = [
+    {
+        "name": "health",
+        "description": "System health and liveness checks.",
+    },
+    {
+        "name": "patients",
+        "description": "Patient registration, profile management, and medical record storage.",
+    },
+    {
+        "name": "appointments",
+        "description": "Appointment booking, confirmation, and the consultation state-machine (PENDING → CONFIRMED → IN_SESSION → COMPLETED).",
+    },
+    {
+        "name": "consultation",
+        "description": "AI-powered consultation processing — accepts audio and/or text, runs NLP extraction, and returns a structured `ConsultationResult`.",
+    },
+    {
+        "name": "dashboard",
+        "description": "Doctor-facing dashboard endpoints: priority queue, daily overview, and patient summary cards.",
+    },
+]
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="MediSync AI",
-        description="Unified Intelligent Patient History System",
+        description=(
+            "**MediSync AI** — Unified Intelligent Patient History System.\n\n"
+            "Provides a RESTful API for patient management, appointment scheduling, "
+            "AI-driven consultation processing, and doctor dashboard analytics.\n\n"
+            "All endpoints (except `/api/health`) require a valid **Bearer JWT** token."
+        ),
         version="1.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
-        lifespan=lifespan
+        openapi_tags=_TAGS_METADATA,
+        contact={
+            "name": "MediSync AI Team",
+            "email": "dev@medisync.ai",
+        },
+        license_info={"name": "MIT"},
+        lifespan=lifespan,
     )
 
     # CORS configuration

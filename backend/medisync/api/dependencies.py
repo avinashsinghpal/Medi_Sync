@@ -1,6 +1,7 @@
 from fastapi import Request
+from medisync.core.security import get_current_user, require_role, TokenData, UserRole
 
-# Stubs for dependency injection of services
+# Dependency injection of services
 
 async def get_patient_manager(request: Request):
     return request.app.state.patient_manager
@@ -19,13 +20,3 @@ async def get_priority_engine(request: Request):
 
 async def get_speech_processor(request: Request):
     return request.app.state.speech_processor
-
-# Auth dependency stubs
-
-async def get_current_user(request: Request):
-    # Stub for current user authentication
-    pass
-
-async def get_current_doctor(request: Request):
-    # Stub for current doctor authentication
-    pass
