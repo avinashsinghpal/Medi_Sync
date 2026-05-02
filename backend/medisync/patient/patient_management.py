@@ -47,7 +47,7 @@ class PatientManager:
         self.repository = repository
         self.settings = settings
 
-    async def create_patient(self, data: CreatePatientRequest) -> PatientProfile:
+    async def create_patient(self, data: CreatePatientRequest, patient_id_override: Optional[str] = None) -> PatientProfile:
         if not data.full_name or not data.full_name.strip():
             raise InvalidPatientDataError("full_name MUST NOT be empty")
         valid_genders = {"male", "female", "other", "prefer_not_to_say"}
@@ -64,7 +64,7 @@ class PatientManager:
         except ValueError:
             raise InvalidPatientDataError("date_of_birth must be YYYY-MM-DD")
 
-        patient_id = generate_patient_id()
+        patient_id = patient_id_override or generate_patient_id()
         now = utc_now()
         
         profile = PatientProfile(

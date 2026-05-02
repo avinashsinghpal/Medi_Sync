@@ -45,10 +45,11 @@ async def seed_data():
         ("Neha Reddy", date(1998, 3, 17), "female", "neha.r@example.com", "+919876543219"),
     ]
 
+    from medisync.patient.patient_management import CreatePatientRequest
     for data in patient_data:
-        p = PatientProfile(
+        p = CreatePatientRequest(
             full_name=data[0],
-            date_of_birth=data[1],
+            date_of_birth=data[1].strftime("%Y-%m-%d"),
             gender=data[2],
             contact_email=data[3],
             contact_phone=data[4]
