@@ -6,6 +6,8 @@ import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
 import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDashboard from './pages/PatientDashboard';
+import ConsultationPage from './pages/ConsultationPage';
+import AppointmentBookingPage from './pages/AppointmentBookingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +56,7 @@ function App() {
               <ProtectedRoute allowedRoles={['DOCTOR', 'ADMIN']}>
                 <Routes>
                   <Route path="dashboard" element={<DoctorDashboard />} />
+                  <Route path="consultation/:id" element={<ConsultationPage />} />
                   {/* Add more doctor routes here */}
                 </Routes>
               </ProtectedRoute>
@@ -66,6 +69,7 @@ function App() {
               <ProtectedRoute allowedRoles={['PATIENT']}>
                 <Routes>
                   <Route path="dashboard" element={<PatientDashboard />} />
+                  <Route path="book" element={<AppointmentBookingPage />} />
                   {/* Add more patient routes here */}
                 </Routes>
               </ProtectedRoute>
