@@ -11,7 +11,7 @@ dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.29.0",
     "motor>=3.4.0",           # Async MongoDB driver
-    "pydantic>=2.7.0",
+    "pydantic[email]>=2.7.0",
     "pydantic-settings>=2.3.0",
     "passlib[bcrypt]>=1.7.4",
     "python-jose[cryptography]>=3.3.0",
@@ -42,6 +42,9 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["medisync"]
 
 [tool.ruff]
 line-length = 100
