@@ -81,10 +81,18 @@ async def setup_app_state():
     appointment_system = AppointmentSystem(
         appointment_repo, patient_manager, priority_engine, settings
     )
-    doctor_dashboard = DoctorDashboard(
-        patient_manager, appointment_system, nlp_engine, priority_engine
+    from medisync.api.dependencies import (
+        get_patient_manager, get_appointment_system, get_doctor_dashboard,
+        get_nlp_engine, get_priority_engine
     )
+    
+    app.dependency_overrides[get_patient_manager] = lambda: patient_manager
+    app.dependency_overrides[get_appointment_system] = lambda: appointment_system
+    app.dependency_overrides[get_doctor_dashboard] = lambda: doctor_dashboard
+    app.dependency_overrides[get_nlp_engine] = lambda: nlp_engine
+    app.dependency_overrides[get_priority_engine] = lambda: priority_engine
 
+    # Set them on app.state too just in case anything accesses it directly
     app.state.patient_manager = patient_manager
     app.state.appointment_system = appointment_system
     app.state.doctor_dashboard = doctor_dashboard
@@ -93,15 +101,11 @@ async def setup_app_state():
 
     yield
 
-    app.state.patient_manager = None
-    app.state.appointment_system = None
-    app.state.doctor_dashboard = None
-    app.state.nlp_engine = None
-    app.state.priority_engine = None
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
-async def async_client():
+async def async_client(setup_app_state):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

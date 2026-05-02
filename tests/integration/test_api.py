@@ -1,14 +1,117 @@
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, date, timezone
+from mongomock_motor import AsyncMongoMockClient
+
 from medisync.api.app import app
-from medisync.core.security import create_access_token
+from medisync.core.config import override_settings
+from medisync.core.security import create_access_token, UserRole
+from medisync.storage.patient_repository import PatientRepository
+from medisync.storage.appointment_repository import AppointmentRepository
+from medisync.patient.patient_management import PatientManager
+from medisync.appointment.appointment_system import AppointmentSystem
+from medisync.dashboard.dashboard import DoctorDashboard
 
 pytestmark = pytest.mark.asyncio
 
+class MockPriorityEngine:
+    async def predict_priority(self, symptoms_description: str, patient_history: dict = None):
+        from medisync.core.types import PriorityLevel
+        from medisync.ai_engine.priority_engine import PriorityAssessment
+        desc = symptoms_description.lower()
+        if "critical" in desc or "severe" in desc or "crushing" in desc or "chest pain" in desc:
+            level = PriorityLevel.CRITICAL
+        elif "moderate" in desc:
+            level = PriorityLevel.MODERATE
+        else:
+            level = PriorityLevel.ROUTINE
+            
+        return PriorityAssessment(
+            priority_level=level,
+            risk_score=0.2,
+            estimated_duration_minutes=15,
+            risk_factors=[],
+            urgent_flags=[],
+            recommendation="",
+            confidence=0.85,
+        )
+
+    async def estimate_duration(self, symptoms_description: str, patient_history: dict = None) -> int:
+        return 15
+
+class MockNLPEngine:
+    async def extract_from_text(self, text: str):
+        from medisync.ai_engine.nlp_engine import ExtractionResult
+        return ExtractionResult(
+            symptoms=["headache", "fever"],
+            medications=[],
+            dosages={},
+            diagnoses=[],
+            severity_indicators=[],
+            medical_terms=[],
+            negations=[],
+            vitals={},
+            summary=f"Patient reports: {text[:60]}",
+            confidence=0.85,
+        )
+
+@pytest_asyncio.fixture(autouse=True)
+async def setup_app_state():
+    """Wire in-memory services into app.state before every test."""
+    client = AsyncMongoMockClient()
+    db = client["test_db"]
+
+    patient_repo = PatientRepository(db)
+    await patient_repo.setup_indexes()
+
+    appointment_repo = AppointmentRepository(db)
+    await appointment_repo.setup_indexes()
+
+    settings = override_settings(
+        mongodb_url="mongodb://localhost",
+        jwt_secret_key="test-secret-key-1234567890-test1234",
+    )
+
+    nlp_engine = MockNLPEngine()
+    priority_engine = MockPriorityEngine()
+
+    patient_manager = PatientManager(patient_repo, settings)
+    appointment_system = AppointmentSystem(
+        appointment_repo, patient_manager, priority_engine, settings
+    )
+    doctor_dashboard = DoctorDashboard(
+        patient_manager, appointment_system, nlp_engine, priority_engine
+    )
+
+    from medisync.api.dependencies import (
+        get_patient_manager, get_appointment_system, get_doctor_dashboard,
+        get_nlp_engine, get_priority_engine
+    )
+
+    app.dependency_overrides[get_patient_manager] = lambda: patient_manager
+    app.dependency_overrides[get_appointment_system] = lambda: appointment_system
+    app.dependency_overrides[get_doctor_dashboard] = lambda: doctor_dashboard
+    app.dependency_overrides[get_nlp_engine] = lambda: nlp_engine
+    app.dependency_overrides[get_priority_engine] = lambda: priority_engine
+
+    app.state.patient_manager = patient_manager
+    app.state.appointment_system = appointment_system
+    app.state.doctor_dashboard = doctor_dashboard
+    app.state.nlp_engine = nlp_engine
+    app.state.priority_engine = priority_engine
+
+    yield
+    app.dependency_overrides.clear()
+
 # Helper to generate JWT tokens
-def get_auth_headers(role: str, user_id: str = "test_user"):
-    token = create_access_token({"sub": user_id, "role": role})
+def get_auth_headers(role: str, user_id: str = "test_user", email: str = "test@example.com"):
+    # Assuming role matches UserRole Enum values
+    try:
+        user_role = UserRole(role)
+    except ValueError:
+        user_role = UserRole.DOCTOR
+    token = create_access_token(user_id=user_id, role=user_role, email=email)
     return {"Authorization": f"Bearer {token}"}
 
 async def test_health_check():
