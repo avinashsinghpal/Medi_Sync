@@ -327,7 +327,12 @@ class DoctorDashboard:
         priority_level = PriorityLevel.ROUTINE
         try:
             if hasattr(self._priority, "predict_priority") and full_text:
-                priority_level = await self._priority.predict_priority(full_text)
+                assessment = await self._priority.predict_priority(full_text)
+                # predict_priority may return a PriorityAssessment or a PriorityLevel
+                if hasattr(assessment, "priority_level"):
+                    priority_level = assessment.priority_level
+                elif isinstance(assessment, PriorityLevel):
+                    priority_level = assessment
         except Exception:
             pass
 

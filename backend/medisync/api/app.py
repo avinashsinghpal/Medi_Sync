@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from medisync.core.config import get_settings
+from contextlib import asynccontextmanager
 
 from medisync.api.routers import patients, appointments, dashboard, consultation, health
 from medisync.core.errors import (
@@ -105,5 +106,57 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    app.include_router(health.router)
+    app.include_router(patients.router)
+    app.include_router(appointments.router)
+    app.include_router(dashboard.router)
+    app.include_router(consultation.router)
 
-app.include_router(health.router)
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+    from medisync.core.errors import (
+        PatientNotFoundError, AppointmentNotFoundError,
+        DuplicatePatientError, AppointmentConflictError,
+        InvalidAppointmentStateError, InvalidPatientDataError,
+        InvalidTokenError, InsufficientPermissionsError,
+        NLPExtractionError, SpeechProcessingError,
+        AIServiceUnavailableError, MediSyncError,
+    )
+
+    @app.exception_handler(PatientNotFoundError)
+    @app.exception_handler(AppointmentNotFoundError)
+    async def not_found_handler(request: Request, exc):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(DuplicatePatientError)
+    @app.exception_handler(AppointmentConflictError)
+    async def conflict_handler(request: Request, exc):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(InvalidPatientDataError)
+    @app.exception_handler(InvalidAppointmentStateError)
+    async def bad_request_handler(request: Request, exc):
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    @app.exception_handler(InvalidTokenError)
+    async def unauthorized_handler(request: Request, exc):
+        return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+    @app.exception_handler(InsufficientPermissionsError)
+    async def forbidden_handler(request: Request, exc):
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+    @app.exception_handler(NLPExtractionError)
+    @app.exception_handler(SpeechProcessingError)
+    @app.exception_handler(AIServiceUnavailableError)
+    async def ai_error_handler(request: Request, exc):
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(MediSyncError)
+    async def generic_medisync_handler(request: Request, exc):
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+    return app
+
+app = create_app()
