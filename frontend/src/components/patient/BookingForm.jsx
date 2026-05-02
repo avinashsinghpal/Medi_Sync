@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,30 +6,44 @@ import { useNavigate } from 'react-router-dom';
 import SymptomInput from './SymptomInput';
 import PriorityBadge from '../shared/PriorityBadge';
 import { useBookAppointment, useEstimatedWaitTime } from '../../hooks/useAppointments';
-import { Loader2, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { useDoctors } from '../../hooks/useDoctors';
+import { Loader2, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 
 const formSchema = z.object({
   patient_id: z.string().min(1, 'Patient ID is required'),
+  doctor_id: z.string().min(1, 'Please select a doctor'),
   date_time: z.string().min(1, 'Date & Time are required'),
   reason: z.string().min(10, 'Please provide a brief reason (min 10 chars)'),
   symptoms: z.array(z.string()).min(1, 'Please add at least one symptom'),
+  consultation_type: z.string().default('in_person'),
 });
 
 export default function BookingForm() {
   const [step, setStep] = useState(1);
+  const [bookingError, setBookingError] = useState(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { mutate: bookAppointment, isPending } = useBookAppointment();
+  const { data: doctors = [] } = useDoctors();
 
-  const { control, register, handleSubmit, formState: { errors }, watch, trigger } = useForm({
+  const { control, register, handleSubmit, formState: { errors }, watch, trigger, setValue } = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      patient_id: 'p-1', // Mocking current user ID
+      patient_id: user?.id || '',
+      doctor_id: '',
       date_time: '',
       reason: '',
       symptoms: [],
+      consultation_type: 'in_person',
     },
     mode: 'onTouched'
   });
+
+  useEffect(() => {
+    if (user?.id) setValue('patient_id', user.id, { shouldValidate: true });
+  }, [user?.id, setValue]);
 
   const symptoms = watch('symptoms');
   const { data: estimate, isLoading: isEstimating } = useEstimatedWaitTime(symptoms);
@@ -40,13 +54,29 @@ export default function BookingForm() {
   };
 
   const onSubmit = (data) => {
+    setBookingError(null);
+    let isoDateTime = data.date_time;
+    try {
+      isoDateTime = new Date(data.date_time).toISOString();
+    } catch {
+      // Keep original input if parsing fails
+    }
+
     bookAppointment({
-      ...data,
-      priority: estimate?.priority || 'routine'
+      patient_id: data.patient_id,
+      doctor_id: data.doctor_id,
+      scheduled_at: isoDateTime,
+      consultation_type: data.consultation_type,
+      symptoms_description: `Reason: ${data.reason}. Symptoms: ${data.symptoms.join(', ')}`,
+      notes: `AI Assessed Priority: ${estimate?.priority || 'routine'}`,
     }, {
       onSuccess: () => {
-        navigate('/patient/dashboard');
-      }
+        setBookingSuccess(true);
+        setTimeout(() => navigate('/patient/dashboard?tab=overview', { replace: true }), 1500);
+      },
+      onError: (err) => {
+        setBookingError(err?.response?.data?.detail || err?.message || 'Booking failed');
+      },
     });
   };
 
@@ -75,6 +105,33 @@ export default function BookingForm() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: '#0f172a' }}>Reason for Visit</h2>
               <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Doctor</label>
+                <select
+                  {...register('doctor_id')}
+                  style={{ width: '100%', padding: '0.75rem', border: `1px solid ${errors.doctor_id ? '#ef4444' : '#cbd5e1'}`, borderRadius: '0.5rem', backgroundColor: 'white', fontSize: '0.9375rem' }}
+                >
+                  <option value="">Select a doctor</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.doctor_id} value={doctor.doctor_id}>
+                      {doctor.name} ({doctor.specialization || 'General'})
+                    </option>
+                  ))}
+                </select>
+                {errors.doctor_id && <span style={{ color: '#ef4444', fontSize: '0.875rem' }}>{errors.doctor_id.message}</span>}
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Consultation Type</label>
+                <select
+                  {...register('consultation_type')}
+                  style={{ width: '100%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '0.5rem', backgroundColor: 'white', fontSize: '0.9375rem' }}
+                >
+                  <option value="in_person">In Person</option>
+                  <option value="teleconsult">Teleconsult</option>
+                  <option value="follow_up">Follow Up</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </div>
+              <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Brief Reason</label>
                 <textarea 
                   {...register('reason')} 
@@ -86,7 +143,7 @@ export default function BookingForm() {
               </div>
               <button 
                 type="button" 
-                onClick={() => handleNext(['reason'])}
+                onClick={() => handleNext(['doctor_id', 'reason'])}
                 style={{ padding: '0.75rem', backgroundColor: '#0f172a', color: 'white', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500' }}
               >
                 Next Step
@@ -161,6 +218,12 @@ export default function BookingForm() {
               
               <div style={{ backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>Doctor</span>
+                  <span style={{ fontWeight: '500' }}>
+                    {doctors.find((d) => d.doctor_id === watch('doctor_id'))?.name || watch('doctor_id')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#64748b', fontSize: '0.875rem' }}>Date & Time</span>
                   <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Calendar size={16}/> {watch('date_time')}</span>
                 </div>
@@ -186,16 +249,26 @@ export default function BookingForm() {
                 <button type="button" onClick={() => setStep(3)} style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid #cbd5e1', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>Edit</button>
                 <button 
                   type="submit" 
-                  disabled={isPending}
+                  disabled={isPending || bookingSuccess}
                   style={{ 
-                    flex: 2, padding: '0.75rem', backgroundColor: '#0ea5e9', color: 'white', borderRadius: '0.5rem', 
-                    border: 'none', cursor: isPending ? 'not-allowed' : 'pointer', fontWeight: '600',
+                    flex: 2, padding: '0.75rem', backgroundColor: bookingSuccess ? '#10b981' : '#0ea5e9', color: 'white', borderRadius: '0.5rem', 
+                    border: 'none', cursor: (isPending || bookingSuccess) ? 'not-allowed' : 'pointer', fontWeight: '600',
                     display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem'
                   }}
                 >
-                  {isPending ? <Loader2 size={18} className="spin" /> : 'Confirm Booking'}
+                  {isPending ? <Loader2 size={18} className="spin" /> : bookingSuccess ? <><CheckCircle size={18} /> Booked!</> : 'Confirm Booking'}
                 </button>
               </div>
+              {bookingError && (
+                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '1rem', borderRadius: '0.5rem', color: '#dc2626', fontSize: '0.875rem' }}>
+                  {bookingError}
+                </div>
+              )}
+              {bookingSuccess && (
+                <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1rem', borderRadius: '0.5rem', color: '#16a34a', fontSize: '0.875rem', display: 'flex', gap: '0.5rem' }}>
+                  <CheckCircle size={16} /> Appointment booked! Redirecting to your dashboard...
+                </div>
+              )}
             </div>
           )}
 

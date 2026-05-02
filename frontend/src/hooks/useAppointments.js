@@ -4,20 +4,31 @@ import api from '../utils/api';
 export const useBookAppointment = () => {
   return useMutation({
     mutationFn: async (appointmentData) => {
-      try {
-        const response = await api.post(`/appointments/book`, appointmentData);
-        return response.data;
-      } catch (error) {
-        console.warn("Failed to book appointment API, using mock success.", error);
-        return new Promise(resolve => setTimeout(() => resolve({ 
-          id: 'app-new-1', 
-          status: 'CONFIRMED',
-          scheduled_time: appointmentData.date_time
-        }), 1000));
-      }
+      const response = await api.post('/appointments', appointmentData);
+      return response.data;
     }
   });
 };
+
+export const usePatientAppointments = (patientId) =>
+  useQuery({
+    queryKey: ['appointments', 'patient', patientId],
+    queryFn: async () => {
+      const response = await api.get(`/appointments/patient/${patientId}`);
+      return response.data;
+    },
+    enabled: !!patientId,
+  });
+
+export const useAppointment = (appointmentId) =>
+  useQuery({
+    queryKey: ['appointments', appointmentId],
+    queryFn: async () => {
+      const response = await api.get(`/appointments/${appointmentId}`);
+      return response.data;
+    },
+    enabled: !!appointmentId,
+  });
 
 export const useEstimatedWaitTime = (symptoms) => {
   return useQuery({

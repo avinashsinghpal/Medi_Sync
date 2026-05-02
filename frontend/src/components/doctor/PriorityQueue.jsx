@@ -39,13 +39,13 @@ export default function PriorityQueue({ doctorId, date }) {
   return (
     <div className="glass-panel" style={{ overflow: 'hidden' }}>
       <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.125rem', margin: 0, color: '#0f172a' }}>Today's Queue</h3>
+        <h3 style={{ fontSize: '1.125rem', margin: 0, color: '#0f172a' }}>Upcoming Queue</h3>
         <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{sortedQueue.length} Appointments</span>
       </div>
       
       {sortedQueue.length === 0 ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-          No appointments scheduled for today.
+          No upcoming appointments.
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
@@ -82,7 +82,7 @@ export default function PriorityQueue({ doctorId, date }) {
                     <td style={{ padding: '1rem', color: '#475569' }}>{item.scheduledTime}</td>
                     <td style={{ padding: '1rem', color: '#475569' }}>{item.estimatedDuration}</td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      {item.status === 'CONFIRMED' && (
+                      {String(item.status).toLowerCase() === 'confirmed' && (
                         <button
                           onClick={() => navigate(`/doctor/consultation/${item.id}`)}
                           style={{

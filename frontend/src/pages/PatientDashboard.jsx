@@ -3,19 +3,15 @@ import Navbar from '../components/shared/Navbar';
 import PriorityBadge from '../components/shared/PriorityBadge';
 import { useAuthStore } from '../store/authStore';
 import { Calendar, Plus, Clock, FileText } from 'lucide-react';
+import { usePatientAppointments } from '../hooks/useAppointments';
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-
-  // Mocking patient appointments
-  const upcomingAppointments = [
-    { id: 'app-1', date: 'Oct 24, 2023', time: '10:00 AM', doctor: 'Dr. Sarah Jenkins', priority: 'routine', status: 'CONFIRMED' }
-  ];
-
-  const pastAppointments = [
-    { id: 'app-old-1', date: 'Sep 12, 2023', time: '02:30 PM', doctor: 'Dr. Michael Chen', priority: 'moderate', status: 'COMPLETED' }
-  ];
+  const { data: appointments = [] } = usePatientAppointments(user?.id);
+  const norm = (s) => (s || '').toLowerCase();
+  const upcomingAppointments = appointments.filter((a) => ['pending', 'confirmed', 'in_session'].includes(norm(a.status)));
+  const pastAppointments = appointments.filter((a) => ['completed', 'cancelled', 'no_show'].includes(norm(a.status)));
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
@@ -55,13 +51,13 @@ export default function PatientDashboard() {
                   No upcoming appointments.
                 </div>
               ) : upcomingAppointments.map(app => (
-                <div key={app.id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #0ea5e9' }}>
+                <div key={app.appointment_id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #0ea5e9' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
-                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>{app.date} at {app.time}</h3>
-                      <p style={{ margin: 0, color: '#64748b' }}>with {app.doctor}</p>
+                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>{new Date(app.scheduled_at).toLocaleString()}</h3>
+                      <p style={{ margin: 0, color: '#64748b' }}>Doctor ID: {app.doctor_id || 'TBD'}</p>
                     </div>
-                    <PriorityBadge priority={app.priority} />
+                    <PriorityBadge priority={app.priority_level} />
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <span style={{ backgroundColor: '#e2e8f0', padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.75rem', fontWeight: '600', color: '#475569' }}>
@@ -84,11 +80,11 @@ export default function PatientDashboard() {
                   No past appointments.
                 </div>
               ) : pastAppointments.map(app => (
-                <div key={app.id} className="glass-panel" style={{ padding: '1.5rem', opacity: 0.8 }}>
+                <div key={app.appointment_id} className="glass-panel" style={{ padding: '1.5rem', opacity: 0.8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div>
-                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>{app.date}</h3>
-                      <p style={{ margin: 0, color: '#64748b' }}>with {app.doctor}</p>
+                      <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>{new Date(app.scheduled_at).toLocaleString()}</h3>
+                      <p style={{ margin: 0, color: '#64748b' }}>Doctor ID: {app.doctor_id || 'TBD'}</p>
                     </div>
                   </div>
                   <button style={{ 

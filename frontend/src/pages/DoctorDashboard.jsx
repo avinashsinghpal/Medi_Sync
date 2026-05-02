@@ -3,10 +3,13 @@ import DashboardStats from '../components/doctor/DashboardStats';
 import PriorityQueue from '../components/doctor/PriorityQueue';
 import PatientSummaryCard from '../components/doctor/PatientSummaryCard';
 import { useAuthStore } from '../store/authStore';
+import { usePriorityQueue } from '../hooks/useDashboard';
 
 export default function DoctorDashboard() {
   const { user } = useAuthStore();
   const today = new Date().toISOString().split('T')[0];
+  const { data: queue = [] } = usePriorityQueue(user?.id, today);
+  const nextPatientId = queue.length > 0 ? queue[0].patientId : null;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -15,7 +18,7 @@ export default function DoctorDashboard() {
       <main className="container" style={{ flex: 1, padding: '2rem 1.5rem' }}>
         <div style={{ marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '1.875rem', marginBottom: '0.5rem' }}>Welcome, Dr. {user?.name?.split(' ')[0] || 'Doctor'}</h1>
-          <p style={{ color: '#64748b', margin: 0 }}>Here's your schedule for today.</p>
+          <p style={{ color: '#64748b', margin: 0 }}>Here's your upcoming schedule.</p>
         </div>
 
         <DashboardStats doctorId={user?.id} date={today} />
@@ -29,8 +32,13 @@ export default function DoctorDashboard() {
           {/* Sidebar / Quick Look */}
           <div>
             <h3 style={{ fontSize: '1.125rem', marginBottom: '1rem', color: '#0f172a' }}>Next Patient</h3>
-            {/* Hardcoded patientId 'p-1' here to demonstrate the PatientSummaryCard on the dashboard */}
-            <PatientSummaryCard patientId="p-1" />
+            {nextPatientId ? (
+              <PatientSummaryCard patientId={nextPatientId} />
+            ) : (
+              <div className="glass-panel" style={{ padding: '1.25rem', color: '#64748b' }}>
+                No patients in queue.
+              </div>
+            )}
             
             <div className="glass-panel" style={{ marginTop: '1.5rem', padding: '1.25rem' }}>
               <h4 style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quick Actions</h4>

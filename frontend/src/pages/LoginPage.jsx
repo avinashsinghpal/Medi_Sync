@@ -114,7 +114,7 @@ export default function LoginPage() {
           </form>
           
           <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-            <p>Demo hint: Use 'doctor@...' for doctor view</p>
+            <p>Demo accounts: doctor@medisync.com / doctor123, patient@medisync.com / patient123</p>
           </div>
         </div>
       </div>

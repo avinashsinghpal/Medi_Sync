@@ -1,32 +1,45 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 
+const initialToken = localStorage.getItem('token') || null;
+let initialUser = null;
+try {
+  initialUser = JSON.parse(localStorage.getItem('user') || 'null');
+} catch {
+  initialUser = null;
+}
+
 export const useAuthStore = create((set, get) => ({
-  user: null,
-  token: localStorage.getItem('token') || null,
-  isAuthenticated: !!localStorage.getItem('token'),
+  user: initialUser,
+  token: initialToken,
+  isAuthenticated: !!initialToken && !!initialUser,
   
   login: async (email, password) => {
     try {
-      // In a real implementation this would hit the API
-      // const response = await api.post('/auth/login', { email, password });
-      // const { user, token } = response.data;
-      
-      // Mock implementation for now as the backend may not be ready
-      const token = 'mock-jwt-token';
-      const user = { id: '1', email, role: email.includes('doctor') ? 'DOCTOR' : 'PATIENT', name: 'Demo User' };
-      
+      const response = await api.post('/auth/login', { email, password });
+      const { user, token } = response.data;
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
       set({ user, token, isAuthenticated: true });
       return user;
     } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
+      const msg = error?.response?.data?.detail || 'Login failed';
+      throw new Error(msg);
     }
+  },
+
+  registerPatient: async (payload) => {
+    const response = await api.post('/auth/register/patient', payload);
+    const { user, token } = response.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    set({ user, token, isAuthenticated: true });
+    return user;
   },
   
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     set({ user: null, token: null, isAuthenticated: false });
   },
   

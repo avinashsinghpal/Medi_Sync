@@ -2,14 +2,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/shared/Navbar';
 import ConsultationPanel from '../components/doctor/ConsultationPanel';
 import { ArrowLeft } from 'lucide-react';
+import { useAppointment } from '../hooks/useAppointments';
 
 export default function ConsultationPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  // In a real app we'd fetch the appointment details to get the associated patientId.
-  // For this mock, we'll just pass a dummy patientId "p-1".
-  const patientId = 'p-1';
+  const { data: appointment } = useAppointment(id);
+  const patientId = appointment?.patient_id;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f1f5f9' }}>
