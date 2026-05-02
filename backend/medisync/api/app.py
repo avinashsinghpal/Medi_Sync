@@ -1,21 +1,30 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from medisync.core.config import get_settings
 from contextlib import asynccontextmanager
 
-from medisync.api.routers import patients, appointments, dashboard, consultation, health
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from medisync.api.routers import (
+    appointments,
+    auth,
+    consultation,
+    dashboard,
+    doctors,
+    health,
+    patients,
+)
+from medisync.core.config import get_settings
 from medisync.core.errors import (
-    MediSyncError,
-    PatientNotFoundError,
+    AIServiceUnavailableError,
+    AppointmentConflictError,
     AppointmentNotFoundError,
     DuplicatePatientError,
-    AppointmentConflictError,
-    InvalidTokenError,
     InsufficientPermissionsError,
+    InvalidTokenError,
+    MediSyncError,
     NLPExtractionError,
+    PatientNotFoundError,
     SpeechProcessingError,
-    AIServiceUnavailableError,
-    format_error,
 )
 from medisync.dashboard.dashboard import DoctorDashboard
 
@@ -24,34 +33,44 @@ from medisync.dashboard.dashboard import DoctorDashboard
 async def lifespan(app: FastAPI):
     """
     Application lifespan: startup wires all services into app.state.
-
-    Full wiring (production) requires live MongoDB + AI engines.
-    In tests, app.state is overridden by fixtures before each test.
     """
-    # Default all state slots to None — overridden in production startup
-    # and in integration test fixtures.
-    app.state.patient_manager = None
-    app.state.appointment_system = None
-    app.state.doctor_dashboard = None
-    app.state.nlp_engine = None
-    app.state.priority_engine = None
-    app.state.speech_processor = None
+    from medisync.ai_engine.nlp_engine import NLPEngine
+    from medisync.ai_engine.priority_engine import PriorityEngine
+    from medisync.ai_engine.speech_to_text import SpeechProcessor
+    from medisync.appointment.appointment_system import AppointmentSystem
+    from medisync.patient.patient_management import PatientManager
+    from medisync.storage.appointment_repository import AppointmentRepository
+    from medisync.storage.patient_repository import PatientRepository
 
-    # Production startup would look like:
-    #   settings = get_settings()
-    #   client = AsyncIOMotorClient(settings.mongodb_url)
-    #   db = client[settings.mongodb_db_name]
-    #   patient_repo = PatientRepository(db)
-    #   appt_repo    = AppointmentRepository(db)
-    #   ...
-    #   app.state.patient_manager    = PatientManager(patient_repo, settings)
-    #   app.state.appointment_system = AppointmentSystem(appt_repo, patient_manager, priority_engine, settings)
-    #   app.state.doctor_dashboard   = DoctorDashboard(patient_manager, appointment_system, nlp_engine, priority_engine)
+    settings = get_settings()
+    client = AsyncIOMotorClient(settings.mongodb_url)
+    db = client[settings.mongodb_db_name]
+
+    patient_repo = PatientRepository(db)
+    await patient_repo.setup_indexes()
+
+    appt_repo = AppointmentRepository(db)
+    await appt_repo.setup_indexes()
+
+    nlp_engine = NLPEngine(settings)
+    priority_engine = PriorityEngine(nlp_engine, settings)
+    speech_processor = SpeechProcessor(settings)
+
+    patient_manager = PatientManager(patient_repo, settings)
+    appointment_system = AppointmentSystem(appt_repo, patient_manager, priority_engine, settings)
+    doctor_dashboard = DoctorDashboard(patient_manager, appointment_system, nlp_engine, priority_engine)
+
+    app.state.db = db
+    app.state.patient_manager = patient_manager
+    app.state.appointment_system = appointment_system
+    app.state.doctor_dashboard = doctor_dashboard
+    app.state.nlp_engine = nlp_engine
+    app.state.priority_engine = priority_engine
+    app.state.speech_processor = speech_processor
 
     yield
 
-    # Shutdown: close DB connections, unload AI models
-    pass
+    client.close()
 
 _TAGS_METADATA = [
     {
@@ -108,6 +127,8 @@ def create_app() -> FastAPI:
     )
     
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(doctors.router)
     app.include_router(patients.router)
     app.include_router(appointments.router)
     app.include_router(dashboard.router)

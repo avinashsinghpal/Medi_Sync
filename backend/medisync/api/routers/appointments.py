@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from medisync.api.schemas.appointments import (
     BookAppointmentRequest as ApiBookAppointmentRequest,
     AppointmentResponse,
@@ -15,11 +15,17 @@ router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 @router.post("", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def book_appointment(
     request: ApiBookAppointmentRequest,
+    raw_request: Request,
     system: AppointmentSystem = Depends(get_appointment_system),
     user: TokenData = Depends(get_current_user)
 ):
     if user.role == UserRole.PATIENT and request.patient_id != user.user_id:
         raise HTTPException(status_code=403, detail="Patients can only book for themselves")
+    if not request.doctor_id:
+        raise HTTPException(status_code=400, detail="doctor_id is required for booking")
+    doctor = await raw_request.app.state.db["doctors"].find_one({"doctor_id": request.doctor_id})
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Selected doctor not found")
 
     req_data = BookAppointmentRequest(
         patient_id=request.patient_id,
