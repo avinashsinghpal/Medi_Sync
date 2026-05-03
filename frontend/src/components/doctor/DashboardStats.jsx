@@ -52,7 +52,7 @@ export default function DashboardStats({ doctorId, date }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
       {statCards.map((card, idx) => (
-        <div key={idx} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        <div key={idx} className="glass-card card-hover" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'default' }}>
           <div style={{ backgroundColor: card.bgColor, padding: '1rem', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {card.icon}
           </div>

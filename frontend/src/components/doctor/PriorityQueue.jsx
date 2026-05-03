@@ -3,7 +3,7 @@ import { usePriorityQueue } from '../../hooks/useDashboard';
 import PriorityBadge from '../shared/PriorityBadge';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import { PRIORITY_CONFIG } from '../../utils/priorityHelpers';
-import { Play } from 'lucide-react';
+import { Play, Calendar } from 'lucide-react';
 
 export default function PriorityQueue({ doctorId, date }) {
   const navigate = useNavigate();
@@ -37,15 +37,19 @@ export default function PriorityQueue({ doctorId, date }) {
   });
 
   return (
-    <div className="glass-panel" style={{ overflow: 'hidden' }}>
-      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="glass-card" style={{ overflow: 'hidden' }}>
+      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: 'var(--color-bg-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: '1.125rem', margin: 0, color: '#0f172a' }}>Upcoming Queue</h3>
         <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{sortedQueue.length} Appointments</span>
       </div>
       
       {sortedQueue.length === 0 ? (
-        <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-          No upcoming appointments.
+        <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'var(--color-border-subtle)', padding: '1rem', borderRadius: '50%', marginBottom: '1rem' }}>
+            <Calendar size={28} style={{ color: 'var(--color-text-muted)', opacity: 0.6 }} />
+          </div>
+          <p style={{ fontWeight: 500, color: 'var(--color-text-title)' }}>No upcoming appointments</p>
+          <p style={{ fontSize: '0.875rem', opacity: 0.8, marginTop: '0.25rem' }}>Your queue is clear.</p>
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>

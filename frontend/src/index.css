@@ -69,7 +69,7 @@ h1, h2, h3, h4 {
 }
 
 /* Glassmorphism Classes */
-.glass-card {
+.glass-card, .glass-panel {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -204,3 +204,55 @@ input:focus, select:focus, textarea:focus {
   background: #94a3b8;
 }
 
+/* Animations for Dynamic Gradient */
+@keyframes gradient-x {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.dynamic-gradient {
+  background: linear-gradient(-45deg, var(--color-brand-primary), var(--color-brand-accent), #0284c7, #38bdf8);
+  background-size: 400% 400%;
+  animation: gradient-x 15s ease infinite;
+}
+
+/* Responsive Grid Layouts */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 380px;
+    gap: 2.5rem;
+  }
+}
+
+/* Responsive Typography and Spacing Adjustments */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  .glass-card, .glass-panel {
+    padding: 1rem !important;
+  }
+}
+
+.menu-item-hover:hover {
+  background-color: var(--color-border-subtle) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--color-border-medium) !important;
+}

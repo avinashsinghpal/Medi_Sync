@@ -60,6 +60,11 @@ async def seed_data():
             print(f"Created patient: {created_p.full_name} ({created_p.patient_id})")
         except Exception as e:
             print(f"Error creating patient {data[0]}: {e}")
+            existing_p = await patient_repo.collection.find_one({"contact.email": data[3]})
+            if existing_p:
+                from medisync.core.types import PatientProfile
+                patients.append(PatientProfile(**existing_p))
+                print(f"Found existing patient: {data[0]}")
 
     if not patients:
         print("No patients created. Aborting.")
@@ -74,7 +79,7 @@ async def seed_data():
     ]
     
     appointments = []
-    base_time = datetime.now(timezone.utc).replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    base_time = datetime.now(timezone.utc).replace(hour=9, minute=0, second=0, microsecond=0)
     
     for i in range(20):
         p = patients[i % len(patients)]
