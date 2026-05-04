@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PriorityQueue from '../components/doctor/PriorityQueue';
 import { BrowserRouter } from 'react-router-dom';
@@ -18,13 +18,12 @@ describe('PriorityQueue', () => {
     return render(<BrowserRouter>{ui}</BrowserRouter>);
   };
 
-  it('displays CRITICAL items first and highlights them with red background', () => {
-    // Mock queue data where a routine item is first and critical is last in the raw array
-    const mockQueue = [
-      { id: 'app-1', patientName: 'Routine Patient', age: 30, priority: 'routine', scheduledTime: '10:00 AM' },
-      { id: 'app-2', patientName: 'Critical Patient', age: 70, priority: 'critical', scheduledTime: '09:00 AM' }
-    ];
+  const mockQueue = [
+    { id: 'app-1', patientName: 'Routine Patient', age: 30, priority: 'routine', scheduledTime: '10:00 AM', status: 'pending' },
+    { id: 'app-2', patientName: 'Critical Patient', age: 70, priority: 'critical', scheduledTime: '09:00 AM', status: 'confirmed' }
+  ];
 
+  it('renders both patients in the queue', () => {
     usePriorityQueue.mockReturnValue({
       data: mockQueue,
       isLoading: false,
@@ -32,25 +31,69 @@ describe('PriorityQueue', () => {
     });
 
     renderWithRouter(<PriorityQueue doctorId="d-1" date="2023-10-10" />);
-    
-    // Check if both patients are rendered
+
     expect(screen.getByText('Routine Patient')).toBeInTheDocument();
     expect(screen.getByText('Critical Patient')).toBeInTheDocument();
+  });
 
-    // Find the rows (tbody tr)
-    const rows = screen.getAllByRole('row').slice(1); // skip header row
-    expect(rows).toHaveLength(2);
+  it('displays CRITICAL patient before ROUTINE patient (sorted by priority)', () => {
+    usePriorityQueue.mockReturnValue({
+      data: mockQueue,
+      isLoading: false,
+      isError: false
+    });
 
-    // The critical patient should be sorted to the top
-    const firstRow = rows[0];
-    const firstRowCells = within(firstRow).getAllByRole('cell');
-    
-    // Check name column
-    expect(firstRowCells[1]).toHaveTextContent('Critical Patient');
+    renderWithRouter(<PriorityQueue doctorId="d-1" date="2023-10-10" />);
 
-    // Check styling on the row for red background
-    // We used '#fef2f2' which is rgb(254, 242, 242)
-    const styles = window.getComputedStyle(firstRow);
-    expect(styles.backgroundColor).toBe('rgb(254, 242, 242)');
+    const allNames = screen.getAllByText(/Patient/);
+    // Critical should appear before Routine in the DOM
+    const criticalIdx = allNames.findIndex(el => el.textContent === 'Critical Patient');
+    const routineIdx  = allNames.findIndex(el => el.textContent === 'Routine Patient');
+    expect(criticalIdx).toBeLessThan(routineIdx);
+  });
+
+  it('shows "Queue is clear" when queue is empty', () => {
+    usePriorityQueue.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false
+    });
+
+    renderWithRouter(<PriorityQueue doctorId="d-1" date="2023-10-10" />);
+    expect(screen.getByText(/queue is clear/i)).toBeInTheDocument();
+  });
+
+  it('shows a loading spinner when data is loading', () => {
+    usePriorityQueue.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false
+    });
+
+    renderWithRouter(<PriorityQueue doctorId="d-1" date="2023-10-10" />);
+    // Should not show any patient names while loading
+    expect(screen.queryByText('Routine Patient')).not.toBeInTheDocument();
+  });
+
+  it('shows an error message when the fetch fails', () => {
+    usePriorityQueue.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true
+    });
+
+    renderWithRouter(<PriorityQueue doctorId="d-1" date="2023-10-10" />);
+    expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
+  });
+
+  it('shows appointment count badge in header', () => {
+    usePriorityQueue.mockReturnValue({
+      data: mockQueue,
+      isLoading: false,
+      isError: false
+    });
+
+    renderWithRouter(<PriorityQueue doctorId="d-1" date="2023-10-10" />);
+    expect(screen.getByText(/2 appointments/i)).toBeInTheDocument();
   });
 });

@@ -8,4 +8,6 @@ export const useDoctors = () =>
       const response = await api.get('/doctors');
       return response.data?.doctors || [];
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
   });

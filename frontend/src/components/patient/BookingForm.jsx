@@ -75,7 +75,11 @@ export default function BookingForm() {
         setTimeout(() => navigate('/patient/dashboard?tab=overview', { replace: true }), 1500);
       },
       onError: (err) => {
-        setBookingError(err?.response?.data?.detail || err?.message || 'Booking failed');
+        setBookingError(
+          err?.response?.data?.detail ||
+          err?.message ||
+          'Booking failed. Please check all fields and try again.'
+        );
       },
     });
   };

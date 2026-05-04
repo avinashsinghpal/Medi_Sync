@@ -5,8 +5,15 @@ export const useBookAppointment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (appointmentData) => {
-      const response = await api.post('/appointments', appointmentData);
-      return response.data;
+      try {
+        const response = await api.post('/appointments', appointmentData);
+        return response.data;
+      } catch (error) {
+        // Rethrow with the backend detail message so the UI can display it
+        const detail = error?.response?.data?.detail;
+        if (detail) throw new Error(detail);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });

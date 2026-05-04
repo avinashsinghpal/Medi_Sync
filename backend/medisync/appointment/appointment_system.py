@@ -57,9 +57,10 @@ class AppointmentSystem:
             priority = assessment.priority_level
         else:
             priority = assessment  # already a PriorityLevel
-        # Getting history for duration estimate
-        history = await self.patient_manager.get_patient_history(request.patient_id)
-        duration = await self.priority_engine.estimate_duration(request.symptoms_description, history)
+        # get_patient_history returns a list of MedicalRecord objects.
+        # estimate_duration expects a dict of risk flags — pass None to use the
+        # "no prior history" default path safely.
+        duration = await self.priority_engine.estimate_duration(request.symptoms_description, None)
         
         # 5. Check for slot conflicts if doctor is assigned
         if request.doctor_id:

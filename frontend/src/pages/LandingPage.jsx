@@ -13,16 +13,21 @@ export default function LandingPage() {
       position: 'relative',
       overflowX: 'hidden'
     }}>
-      {/* Dynamic Background Elements */}
-      <div style={{ 
-        position: 'absolute', top: '-10%', right: '-5%', width: '40vw', height: '40vw', 
-        background: 'radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, transparent 70%)', 
-        borderRadius: '50%', zIndex: 0, filter: 'blur(100px)' 
+      {/* Decorative Background Blobs */}
+      <div style={{
+        position: 'fixed', top: '-15%', right: '-10%', width: '55vw', height: '55vw',
+        background: 'radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 65%)',
+        borderRadius: '50%', zIndex: 0, pointerEvents: 'none',
       }} />
-      <div style={{ 
-        position: 'absolute', bottom: '10%', left: '-5%', width: '30vw', height: '30vw', 
-        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%)', 
-        borderRadius: '50%', zIndex: 0, filter: 'blur(80px)' 
+      <div style={{
+        position: 'fixed', bottom: '0%', left: '-10%', width: '45vw', height: '45vw',
+        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 65%)',
+        borderRadius: '50%', zIndex: 0, pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'fixed', top: '50%', left: '45%', width: '25vw', height: '25vw',
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.07) 0%, transparent 70%)',
+        borderRadius: '50%', zIndex: 0, pointerEvents: 'none',
       }} />
 
       {/* Navbar */}

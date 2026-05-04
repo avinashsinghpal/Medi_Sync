@@ -73,6 +73,7 @@ function App() {
                   <Route path="dashboard" element={<PatientDashboard />} />
                   <Route path="book" element={<AppointmentBookingPage />} />
                   <Route path="profile" element={<PatientProfilePage />} />
+                  <Route path="history" element={<PatientHistoryPage />} />
                 </Routes>
               </ProtectedRoute>
             } 

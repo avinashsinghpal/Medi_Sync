@@ -122,8 +122,13 @@ async def get_medical_history(
     limit: int = 20, 
     offset: int = 0,
     manager: PatientManager = Depends(get_patient_manager),
-    user: TokenData = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN, UserRole.NURSE))
+    user: TokenData = Depends(get_current_user)
 ):
+    # Patients can only view their own history; doctors/admins can view any
+    if user.role == UserRole.PATIENT and patient_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Can only access own history")
+    if user.role not in (UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN, UserRole.NURSE):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     records = await manager.get_patient_history(patient_id, limit, offset)
     # Convert to response
     record_responses = []
